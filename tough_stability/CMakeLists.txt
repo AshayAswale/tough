@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(humanoid_common)
+project(tough_stability)
 SET(CMAKE_BUILD_TYPE RelWithDebInfo)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
@@ -15,7 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   visualization_msgs
   tf_conversions
   urdf
-  val_interface
+  tough_common
 )
 
 ## System dependencies are found with CMake's conventions
@@ -131,16 +131,16 @@ include_directories(
 )
 
 ## Declare a C++ library
- add_library(humanoid_common
+ add_library(tough_stability
    src/com.cpp
    src/stability.cpp
-   src/standing_stable_controller.cpp
+  #  src/standing_stable_controller.cpp
  )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
- add_dependencies(humanoid_common ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+ add_dependencies(tough_stability ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
  target_link_libraries(${PROJECT_NAME}
    ${catkin_LIBRARIES}
    ${PCL_LIBRARIES}
@@ -148,14 +148,14 @@ include_directories(
 
 
 ## Declare a C++ executable
-# add_executable(humanoid_common_node src/humanoid_common_node.cpp)
+# add_executable(tough_stability_node src/tough_stability_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(humanoid_common_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(tough_stability_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(humanoid_common_node
+# target_link_libraries(tough_stability_node
 #   ${catkin_LIBRARIES}
 # )
 
@@ -174,7 +174,7 @@ include_directories(
 # )
 
 ## Mark executables and/or libraries for installation
- install(TARGETS humanoid_common
+ install(TARGETS tough_stability
    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -199,7 +199,7 @@ include_directories(
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_humanoid_common.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_tough_stability.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
