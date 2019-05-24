@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 2.8.3)
 project(tough_common)
 
 add_definitions(-std=c++11)
-
-find_package(catkin REQUIRED COMPONENTS roscpp urdf tf ihmc_msgs std_msgs sensor_msgs geometry_msgs)
-
+find_package(PCL 1.7 REQUIRED io)
+find_package(catkin REQUIRED COMPONENTS roscpp urdf tf ihmc_msgs std_msgs sensor_msgs geometry_msgs PCL)
+#PCL
 #kdtree is not required here. This should be removed.
 #set(KDSourcesList src/kdtree/alglibinternal.cpp src/kdtree/ap.cpp src/kdtree/alglibmisc.cpp)
 
@@ -20,11 +20,11 @@ catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS  roscpp urdf tf ihmc_msgs std_msgs sensor_msgs geometry_msgs
-#  DEPENDS system_lib
+ DEPENDS PCL
 )
 
 
-include_directories(${catkin_INCLUDE_DIRS} include)
+include_directories(${catkin_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS} include)
 
 ## Declare a C++ library
 #add_library(kdtree

@@ -21,6 +21,7 @@ stability::stability(float foot_polygon_scale, ros::NodeHandle nh, std::string f
 
 stability::~stability()
 {
+  delete CoM;
 }
 
 /////////////////////////////// taken from hrl_kinematics ///////////////////////////////

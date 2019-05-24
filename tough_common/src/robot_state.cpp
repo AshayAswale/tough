@@ -39,6 +39,11 @@ RobotStateInformer::RobotStateInformer(ros::NodeHandle nh) : nh_(nh)
   rightWristForceSensorSub_ =
       nh_.subscribe(prefix + RIGHT_WRIST_FORCE_SENSOR_TOPIC, 1, &RobotStateInformer::rightWristForceSensorCB, this);
 
+  leftSupportPolygonSub_ =
+      nh_.subscribe(prefix + LEFT_FOOT_SUPPORT_POLYGON_TOPIC, 1, &RobotStateInformer::leftSupportPolygonCB, this);
+  rightSupportPolygonSub_ =
+      nh_.subscribe(prefix + RIGHT_FOOT_SUPPORT_POLYGON_TOPIC, 1, &RobotStateInformer::rightSupportPolygonCB, this);
+
   initializeClassMembers();
 }
 
@@ -107,6 +112,14 @@ void RobotStateInformer::rightWristForceSensorCB(const geometry_msgs::WrenchStam
 {
   wristWrenches_[RIGHT] = msg;
 }
+void RobotStateInformer::leftSupportPolygonCB(const ihmc_msgs::SupportPolygonRosMessage msg)
+{
+  leftSupportPolygonIHMCMsg_ = msg;
+}
+void RobotStateInformer::rightSupportPolygonCB(const ihmc_msgs::SupportPolygonRosMessage msg)
+{
+  rightSupportPolygonIHMCMsg_ = msg;
+}
 
 int RobotStateInformer::getJointNumber(std::string jointName)
 {
@@ -171,6 +184,68 @@ void RobotStateInformer::getWristTorque(const RobotSide side, geometry_msgs::Vec
 bool RobotStateInformer::isRobotInDoubleSupport()
 {
   return doubleSupportStatus_;
+}
+
+bool RobotStateInformer::isPointInSupportPolygon(geometry_msgs::Point& point)
+{
+}
+
+void RobotStateInformer::getSupportPolygon(geometry_msgs::Polygon& supportPolygon)
+{
+  geometry_msgs::Polygon leftSupportPolygon, rightSupportPolygon;
+  convertIHMCPolygonMsgToGeometryMsg(leftSupportPolygonIHMCMsg_, leftSupportPolygon);
+  convertIHMCPolygonMsgToGeometryMsg(rightSupportPolygonIHMCMsg_, rightSupportPolygon);
+  getConvexHull(leftSupportPolygon, rightSupportPolygon, supportPolygon);
+}
+
+void RobotStateInformer::convertIHMCPolygonMsgToGeometryMsg(ihmc_msgs::SupportPolygonRosMessage& ihmc_msg,
+                                          geometry_msgs::Polygon& geometry_msg)
+{
+  int num_of_vert = ihmc_msg.number_of_vertices;
+  geometry_msg.points.resize(num_of_vert);
+  for (int i = 0; i < num_of_vert; i++)
+  {
+    geometry_msg.points[i].x = ihmc_msg.vertices[i].x;
+    geometry_msg.points[i].y = ihmc_msg.vertices[i].y;
+    geometry_msg.points[i].z = 0.0;
+  }
+}
+
+void RobotStateInformer::getConvexHull(geometry_msgs::Polygon& leftSupportPolygon, geometry_msgs::Polygon& rightSupportPolygon, geometry_msgs::Polygon& finalSupportPolygon)
+{
+  pcl::ConvexHull<pcl::PointXYZ> convex_hull;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr polygon_point_cloud(new pcl::PointCloud<pcl::PointXYZ>);;
+  pcl::PointCloud<pcl::PointXYZ> convex_polygon_point_cloud;
+  int size_left_polygon, size_right_polygon;
+  size_left_polygon = leftSupportPolygon.points.size();
+  size_right_polygon = rightSupportPolygon.points.size();
+  polygon_point_cloud->resize(size_left_polygon + size_right_polygon);
+
+  for (size_t i = 0; i < std::max(size_left_polygon, size_right_polygon); i++)
+  {
+    if(i<size_left_polygon)
+      polygon_point_cloud->points.at(i) =
+          pcl::PointXYZ(leftSupportPolygon.points[i].x, leftSupportPolygon.points[i].y, 0.0);
+    if (i < size_right_polygon)
+      polygon_point_cloud->points.at(i) =
+          pcl::PointXYZ(rightSupportPolygon.points[i].x, rightSupportPolygon.points[i].y, 0.0);
+  }
+  // convex_hull.setDimension(2);
+  convex_hull.setInputCloud(polygon_point_cloud);
+  std::vector<pcl::Vertices> polygons;
+  convex_hull.reconstruct(convex_polygon_point_cloud);
+
+  tf::Point tf_temp_point;
+  geometry_msgs::Point geom_temp_point_64;
+  geometry_msgs::Point32 geom_temp_point_32;
+  finalSupportPolygon.points.resize(convex_polygon_point_cloud.size());
+  for (int i = 0; i < convex_polygon_point_cloud.size(); i++)
+  {
+    tf_temp_point = tf::Point(convex_polygon_point_cloud[i].x, convex_polygon_point_cloud[i].y, convex_polygon_point_cloud[i].z);
+    tf::pointTFToMsg(tf_temp_point, geom_temp_point_64);
+    geomMsgPointToGeomMsgPoint32(geom_temp_point_64, geom_temp_point_32);
+    finalSupportPolygon.points.at(i) = geom_temp_point_32;
+  }
 }
 
 void RobotStateInformer::getCapturePoint(geometry_msgs::Point& point)

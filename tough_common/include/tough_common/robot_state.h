@@ -7,11 +7,15 @@
 #include <tf/transform_listener.h>
 #include <mutex>
 #include <geometry_msgs/Pose2D.h>
+#include <geometry_msgs/Polygon.h>
 #include "tough_common/robot_description.h"
 #include <sensor_msgs/Imu.h>
 #include <ihmc_msgs/Point2dRosMessage.h>
+#include <ihmc_msgs/SupportPolygonRosMessage.h>
 #include <geometry_msgs/WrenchStamped.h>
 #include <std_msgs/Bool.h>
+#include <pcl-1.7/pcl/surface/convex_hull.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 struct RobotState
 {
@@ -70,6 +74,23 @@ private:
 
   void populateStateMap();
   void initializeClassMembers();
+
+  ros::Subscriber leftSupportPolygonSub_;
+  ros::Subscriber rightSupportPolygonSub_;
+  void leftSupportPolygonCB(const ihmc_msgs::SupportPolygonRosMessage msg);
+  void rightSupportPolygonCB(const ihmc_msgs::SupportPolygonRosMessage msg);
+  ihmc_msgs::SupportPolygonRosMessage leftSupportPolygonIHMCMsg_;
+  ihmc_msgs::SupportPolygonRosMessage rightSupportPolygonIHMCMsg_;
+  void getConvexHull(geometry_msgs::Polygon& leftSupportPolygon, geometry_msgs::Polygon& rightSupportPolygon, geometry_msgs::Polygon& finalSupportPolygon);
+  void convertIHMCPolygonMsgToGeometryMsg(ihmc_msgs::SupportPolygonRosMessage& ihmc_msg, geometry_msgs::Polygon& geometry_msg);
+  
+  void inline geomMsgPointToGeomMsgPoint32(geometry_msgs::Point& point, geometry_msgs::Point32& point_32)
+  {
+    point_32.x = point.x;
+    point_32.y = point.y;
+    point_32.z = point.z;    
+  }
+
 
   void inline parseParameter(const std::string& paramName, std::string& parameter)
   {
@@ -208,6 +229,10 @@ public:
   void getCenterOfMass(geometry_msgs::Point& point);
 
   void getPelvisIMUReading(sensor_msgs::Imu& msg);
+
+  void getSupportPolygon(geometry_msgs::Polygon& supportPolygon);
+
+  bool isPointInSupportPolygon(geometry_msgs::Point& point);
 };
 
 #endif  // TOUGH_ROBOT_STATE_INFORMER_H
