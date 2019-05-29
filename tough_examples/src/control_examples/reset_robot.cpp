@@ -13,9 +13,9 @@ int main(int argc, char** argv)
   ChestControlInterface chestTraj(nh);
   PelvisControlInterface pelvisTraj(nh);
 
-  pelvisTraj.controlPelvisHeight(0.75);
+  // pelvisTraj.controlPelvisHeight(0.79);
   chestTraj.resetPose(1.0);
-  armTraj.moveToDefaultPose(RobotSide::LEFT);
+  // armTraj.moveToDefaultPose(RobotSide::LEFT);
   armTraj.moveToDefaultPose(RobotSide::RIGHT);
   ros::Duration(1).sleep();
 }

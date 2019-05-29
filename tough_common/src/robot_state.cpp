@@ -186,20 +186,47 @@ bool RobotStateInformer::isRobotInDoubleSupport()
   return doubleSupportStatus_;
 }
 
-bool RobotStateInformer::isPointInSupportPolygon(geometry_msgs::Point& point)
+bool RobotStateInformer::isPointInSupportPolygon(const geometry_msgs::Point& point)
 {
+  geometry_msgs::Polygon support_polygon;
+  getSupportPolygon(support_polygon);
+  assert(support_polygon.points.size() >= 3);
+  int positive_direction = 0;
+  bool lies_inside = true;
+
+  for (size_t curr_point = 0; curr_point < support_polygon.points.size(); ++curr_point)
+  {
+    int next_point = (curr_point + 1) % (support_polygon.points.size());
+    double dx = support_polygon.points.at(next_point).x - support_polygon.points.at(curr_point).x;
+    double dy = support_polygon.points.at(next_point).y - support_polygon.points.at(curr_point).y;
+
+    if (dx == 0.0 && dy == 0.0)
+      continue; // Identical Points Detected
+
+    //Compare Slopes of two lines.
+    double line_test = (point.y - support_polygon.points.at(curr_point).y) * dx - 
+                       (point.x - support_polygon.points.at(curr_point).x) * dy;
+
+    if (curr_point == 0)
+      positive_direction = (line_test > 0.0);
+
+    if ((line_test > 0.0) != positive_direction)
+      lies_inside = false;
+  }
+
+  return lies_inside;
 }
 
-void RobotStateInformer::getSupportPolygon(geometry_msgs::Polygon& supportPolygon)
+void RobotStateInformer::getSupportPolygon(geometry_msgs::Polygon& support_polygon)
 {
-  geometry_msgs::Polygon leftSupportPolygon, rightSupportPolygon;
-  convertIHMCPolygonMsgToGeometryMsg(leftSupportPolygonIHMCMsg_, leftSupportPolygon);
-  convertIHMCPolygonMsgToGeometryMsg(rightSupportPolygonIHMCMsg_, rightSupportPolygon);
-  getConvexHull(leftSupportPolygon, rightSupportPolygon, supportPolygon);
+  geometry_msgs::Polygon left_support_polygon, right_support_polygon;
+  convertIHMCPolygonMsgToGeomMsg(leftSupportPolygonIHMCMsg_, left_support_polygon);
+  convertIHMCPolygonMsgToGeomMsg(rightSupportPolygonIHMCMsg_, right_support_polygon);
+  getConvexHull(left_support_polygon, right_support_polygon, support_polygon);
 }
 
-void RobotStateInformer::convertIHMCPolygonMsgToGeometryMsg(ihmc_msgs::SupportPolygonRosMessage& ihmc_msg,
-                                          geometry_msgs::Polygon& geometry_msg)
+void RobotStateInformer::convertIHMCPolygonMsgToGeomMsg(const ihmc_msgs::SupportPolygonRosMessage& ihmc_msg,
+                                                        geometry_msgs::Polygon& geometry_msg)
 {
   int num_of_vert = ihmc_msg.number_of_vertices;
   geometry_msg.points.resize(num_of_vert);
@@ -211,42 +238,52 @@ void RobotStateInformer::convertIHMCPolygonMsgToGeometryMsg(ihmc_msgs::SupportPo
   }
 }
 
-void RobotStateInformer::getConvexHull(geometry_msgs::Polygon& leftSupportPolygon, geometry_msgs::Polygon& rightSupportPolygon, geometry_msgs::Polygon& finalSupportPolygon)
+void RobotStateInformer::getConvexHull(const geometry_msgs::Polygon& left_support_polygon, const geometry_msgs::Polygon& right_support_polygon, geometry_msgs::Polygon& final_support_polygon)
 {
+  final_support_polygon.points = left_support_polygon.points;
+  final_support_polygon.points.insert(final_support_polygon.points.end(), right_support_polygon.points.begin(),
+                                      right_support_polygon.points.end());
+// convert to pcl
+
+//find convex hull
   pcl::ConvexHull<pcl::PointXYZ> convex_hull;
-  pcl::PointCloud<pcl::PointXYZ>::Ptr polygon_point_cloud(new pcl::PointCloud<pcl::PointXYZ>);;
   pcl::PointCloud<pcl::PointXYZ> convex_polygon_point_cloud;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr polygon_point_cloud(new pcl::PointCloud<pcl::PointXYZ>);
   int size_left_polygon, size_right_polygon;
-  size_left_polygon = leftSupportPolygon.points.size();
-  size_right_polygon = rightSupportPolygon.points.size();
+  size_left_polygon = left_support_polygon.points.size();
+  size_right_polygon = right_support_polygon.points.size();
   polygon_point_cloud->resize(size_left_polygon + size_right_polygon);
 
   for (size_t i = 0; i < std::max(size_left_polygon, size_right_polygon); i++)
   {
     if(i<size_left_polygon)
       polygon_point_cloud->points.at(i) =
-          pcl::PointXYZ(leftSupportPolygon.points[i].x, leftSupportPolygon.points[i].y, 0.0);
+          pcl::PointXYZ(left_support_polygon.points[i].x, left_support_polygon.points[i].y, 0.0);
     if (i < size_right_polygon)
-      polygon_point_cloud->points.at(i) =
-          pcl::PointXYZ(rightSupportPolygon.points[i].x, rightSupportPolygon.points[i].y, 0.0);
+      polygon_point_cloud->points.at(i+size_left_polygon) =
+          pcl::PointXYZ(right_support_polygon.points[i].x, right_support_polygon.points[i].y, 0.0);
   }
-  // convex_hull.setDimension(2);
+
   convex_hull.setInputCloud(polygon_point_cloud);
   std::vector<pcl::Vertices> polygons;
   convex_hull.reconstruct(convex_polygon_point_cloud);
 
-  tf::Point tf_temp_point;
-  geometry_msgs::Point geom_temp_point_64;
-  geometry_msgs::Point32 geom_temp_point_32;
-  finalSupportPolygon.points.resize(convex_polygon_point_cloud.size());
+  //convert it back to geometry
+  convertPCLPointCloudToGeomMsgPoint(convex_polygon_point_cloud, final_support_polygon);
+}
+
+void RobotStateInformer::convertPCLPointCloudToGeomMsgPoint(pcl::PointCloud<pcl::PointXYZ>& convex_polygon_point_cloud,
+                                                            geometry_msgs::Polygon& final_support_polygon)
+{
+  final_support_polygon.points.resize(convex_polygon_point_cloud.size());
   for (int i = 0; i < convex_polygon_point_cloud.size(); i++)
   {
-    tf_temp_point = tf::Point(convex_polygon_point_cloud[i].x, convex_polygon_point_cloud[i].y, convex_polygon_point_cloud[i].z);
-    tf::pointTFToMsg(tf_temp_point, geom_temp_point_64);
-    geomMsgPointToGeomMsgPoint32(geom_temp_point_64, geom_temp_point_32);
-    finalSupportPolygon.points.at(i) = geom_temp_point_32;
+    final_support_polygon.points[i].x = convex_polygon_point_cloud[i].x;
+    final_support_polygon.points[i].y = convex_polygon_point_cloud[i].y;
+    final_support_polygon.points[i].z = convex_polygon_point_cloud[i].z;
   }
 }
+
 
 void RobotStateInformer::getCapturePoint(geometry_msgs::Point& point)
 {

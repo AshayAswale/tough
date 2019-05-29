@@ -15,7 +15,6 @@
 #include <geometry_msgs/WrenchStamped.h>
 #include <std_msgs/Bool.h>
 #include <pcl-1.7/pcl/surface/convex_hull.h>
-#include <pcl_conversions/pcl_conversions.h>
 
 struct RobotState
 {
@@ -81,16 +80,17 @@ private:
   void rightSupportPolygonCB(const ihmc_msgs::SupportPolygonRosMessage msg);
   ihmc_msgs::SupportPolygonRosMessage leftSupportPolygonIHMCMsg_;
   ihmc_msgs::SupportPolygonRosMessage rightSupportPolygonIHMCMsg_;
-  void getConvexHull(geometry_msgs::Polygon& leftSupportPolygon, geometry_msgs::Polygon& rightSupportPolygon, geometry_msgs::Polygon& finalSupportPolygon);
-  void convertIHMCPolygonMsgToGeometryMsg(ihmc_msgs::SupportPolygonRosMessage& ihmc_msg, geometry_msgs::Polygon& geometry_msg);
+  void getConvexHull(const geometry_msgs::Polygon& left_support_polygon, const geometry_msgs::Polygon& right_support_polygon, geometry_msgs::Polygon& final_support_polygon);
+  void convertIHMCPolygonMsgToGeomMsg(const ihmc_msgs::SupportPolygonRosMessage& ihmc_msg, geometry_msgs::Polygon& geometry_msg);
+  void convertPCLPointCloudToGeomMsgPoint(pcl::PointCloud<pcl::PointXYZ>& convex_polygon_point_cloud,
+                                          geometry_msgs::Polygon& final_support_polygon);
   
-  void inline geomMsgPointToGeomMsgPoint32(geometry_msgs::Point& point, geometry_msgs::Point32& point_32)
+  void inline geomMsgPointToGeomMsgPoint32(const geometry_msgs::Point& point, geometry_msgs::Point32& point_32)
   {
     point_32.x = point.x;
     point_32.y = point.y;
     point_32.z = point.z;    
   }
-
 
   void inline parseParameter(const std::string& paramName, std::string& parameter)
   {
@@ -232,7 +232,7 @@ public:
 
   void getSupportPolygon(geometry_msgs::Polygon& supportPolygon);
 
-  bool isPointInSupportPolygon(geometry_msgs::Point& point);
+  bool isPointInSupportPolygon(const geometry_msgs::Point& point);
 };
 
 #endif  // TOUGH_ROBOT_STATE_INFORMER_H
