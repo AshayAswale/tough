@@ -97,8 +97,8 @@ void com::getCOMForLink(const KDL::SegmentMap::const_iterator& current_seg,
 
     if (jnt == joint_positions.end())
     {
-      ROS_WARN("Could not find joint %s of %s in joint positions. Aborting tree branch.",
-               current_seg->second.segment.getJoint().getName().c_str(), current_seg->first.c_str());
+      // ROS_WARN("Could not find joint %s of %s in joint positions. Aborting tree branch.",
+      //          current_seg->second.segment.getJoint().getName().c_str(), current_seg->first.c_str());
       return;
     }
     jnt_p = jnt->second;
